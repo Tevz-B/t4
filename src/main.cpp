@@ -1,19 +1,43 @@
+#include "words.h"
 #include <ncurses.h>
 #include <vector>
 #include <string>
 
+uint16_t screen_width = 20;
+uint16_t screen_height = 5;
+uint16_t input_line_index = screen_height;
+char blank_char = '-';
+
+std::vector<std::string> emptyScreen() {
+  std::vector<std::string> ret;
+  for (uint16_t i = 0; i < screen_height; i++) {
+    ret.push_back(std::string(screen_width, blank_char));
+  }
+  return ret;
+}
+
 int main() {
+      if (!has_colors()) {
+        endwin();
+        printf("Your terminal does not support color\n");
+        return;
+      }
     // Initialize screen
     initscr();
     raw();                  // Line buffering disabled
     keypad(stdscr, TRUE);   // We get F1, F2, etc...
     noecho();               // Don't echo() while we do getch
 
+    std::string input_line("$  ");
     // Create a buffer to store lines of text
-    std::vector<std::string> lines;
-    lines.push_back("");    // Start with one empty line
+    std::vector<std::string> lines = emptyScreen();
+    lines.push_back(input_line); // Add input line
 
-    int y = 0, x = 0;       // Cursor position
+
+    // Insert word onto screen
+    lines[0].replace(5, word().length(), word());
+
+    int y = input_line_index, x = input_line.length() - 1;       // Cursor position
 
     bool run = true;
     while (run) {
