@@ -37,6 +37,10 @@ void init_color_pairs() {
     init_pair(CP_GREEN, COLOR_GREEN, -1);
 }
 
+void print_colored() {
+    // TODO
+}
+
 /*********************************************************/
 /*             Main                                   */
 /*********************************************************/
@@ -141,8 +145,8 @@ int main() {
         default:
             // insert into input line
             input_line.insert(x - input_line_prefix.length(), 1, (char)ch);
-            // check if match
-            // color match
+            // TODO: check if match
+            // TODO: color match
             x++;
             break;
         }
