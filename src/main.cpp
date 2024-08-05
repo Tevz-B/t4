@@ -19,13 +19,59 @@ std::string input_line_prefix = "$ :";
 #define CP_GREEN 3
 
 /*********************************************************/
-/*             Utils                                   */
+/*             Structs                                   */
 /*********************************************************/
 
-std::vector<std::string> emptyScreen() {
-    std::vector<std::string> ret;
+// Create a structure that represents an array of strings and empty strings
+// loop through structure and print objects
+// Grid:
+//
+// +==================+
+// |     |      |     |
+// |     | Cell |     | Line
+// |     |      |     |
+// +- - - - - - -  - -+
+// |     |      |     |
+// |     |      |     |
+// |     |      |     |
+// +==================+
+// |                  |
+// |      ...         |
+
+struct Grid {
+    // using Line = std::vector<std::string>;
+    struct Line {
+        std::vector<std::string> cells;
+        std::vector<bool> blank;
+
+        void insert(std::string && word) {
+            if (cells.size() != 1) {
+                std::printf("Cells size is not 1");
+                exit(1);
+            }
+            auto ostr = std::move(cells[0]);
+            auto left = ostr.substr(0,5);
+            auto right = ostr.substr(word.length() + 5);
+            cells[0] = std::move(left);
+            cells.push_back(std::move(word));
+            cells.push_back(std::move(right));
+        }
+    };
+    std::vector<Line> lines;
+};
+
+/*********************************************************/
+/*             Utils                                     */
+/*********************************************************/
+
+Grid emptyScreen() {
+    Grid ret;
+    Grid::Line line{
+        .cells = {std::string(screen_width, blank_char)},
+        .blank = {true},
+    };
     for (uint16_t i = 0; i < screen_height; i++) {
-        ret.push_back(std::string(screen_width, blank_char));
+        ret.lines.push_back(line);
     }
     return ret;
 }
@@ -42,8 +88,9 @@ void print_colored() {
 }
 
 /*********************************************************/
-/*             Main                                   */
+/*             Main                                      */
 /*********************************************************/
+
 
 int init() {
     initscr();
@@ -70,11 +117,12 @@ int main() {
 
     std::string input_line;
     // Create a buffer to store lines of text
-    std::vector<std::string> lines = emptyScreen();
+    Grid grid = emptyScreen();
 
     // TODO
     // Insert word onto screen
-    lines[0].replace(5, word().length(), word());
+    // grid.lines[0].cells[0].replace(5, word().length(), word());
+    grid.lines[0].insert(word());
 
     int y = input_line_index;
     int x = input_line_prefix.length();
@@ -83,7 +131,7 @@ int main() {
         clear(); // Clear the screen
         size_t i;
 
-        for (i = 0; i < lines.size(); ++i) {
+        for (i = 0; i < grid.lines.size(); ++i) {
             mvprintw(i, 0, "%s", lines[i].c_str());
         }
 
@@ -146,6 +194,9 @@ int main() {
             // insert into input line
             input_line.insert(x - input_line_prefix.length(), 1, (char)ch);
             // TODO: check if match
+            for( auto & line : lines ) {
+                if( 
+            }
             // TODO: color match
             x++;
             break;
