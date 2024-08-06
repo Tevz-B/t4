@@ -3,11 +3,17 @@
 #include <regex>
 #include <string>
 #include <vector>
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 /*********************************************************/
 /*             Globals                                   */
 /*********************************************************/
 
+FILE *lf; // Log file
 uint16_t screen_width = 20;
 uint16_t screen_height = 5;
 uint16_t input_line_index = screen_height;
@@ -18,6 +24,8 @@ std::string input_line_prefix = "$ :";
 #define CP_RED 1
 #define CP_BLUE 2
 #define CP_GREEN 3
+
+#define LOG(...) fprintf(lf, __VA_ARGS__);fprintf(lf,"\n");fflush(lf)
 
 /*********************************************************/
 /*             Structs                                   */
@@ -86,26 +94,27 @@ Grid emptyScreen() {
 
 void printGrid(const Grid& grid, const std::string& input_line) {
     for (const auto& line : grid.lines) {
-        for( size_t i = 0; i < line.cells.size(); i++ ) {
+        for (size_t i = 0; i < line.cells.size(); i++) {
             auto cell = line.cells[i];
             if (!line.blank[i]) {
-                // check match and color
+                // check match and color print
                 std::regex re(input_line);
                 std::smatch m;
                 if (std::regex_search(cell, m, re)) {
-                    // TODO : position
-                    mvprintw(i, 0, "%s", m.prefix().str().c_str());
+                    // TODO : position try refacto0; i < line.cells.size; i++) {
+                    printw("%s", m.prefix().str().c_str());
                     attron(COLOR_PAIR(CP_BLUE));
-                    mvprintw(i, 0, "%s", m[0].str().c_str());
+                    printw("%s", m[0].str().c_str());
                     attroff(COLOR_PAIR(CP_BLUE));
-                    mvprintw(i, 0, "%s", m.suffix().str().c_str());
-                }
-                else {
-                    // TODO normal print
+                    printw("%s", m.suffix().str().c_str());
+                    LOG("tevz");
+                    continue;
                 }
             }
-            line.cells[i];
+            // normal print
+            printw("%s", cell.c_str());
         }
+        printw("\n");
     }
 }
 
@@ -126,12 +135,17 @@ void print_colored() {
 
 
 int init() {
+    // Init debug log
+    lf = fopen("t4.log", "w+");
+
+    // init terminal
     initscr();
     if (!has_colors()) {
         endwin();
         printf("Your terminal does not support color\n");
         return 1;
     }
+
     start_color();        // Start color functionality
     use_default_colors(); // Use default terminal colors
     init_color_pairs();
@@ -147,6 +161,7 @@ int main() {
         printf("Failed to init\n");
         return 1;
     }
+    LOG("begin");
 
     std::string input_line;
     // Create a buffer to store lines of text
@@ -162,8 +177,6 @@ int main() {
 
     while (true) {
         clear(); // Clear the screen
-        size_t i;
-
         // Print Grid
         printGrid( grid, input_line );
         // for (i = 0; i < grid.lines.size(); ++i) {
@@ -172,7 +185,7 @@ int main() {
 
         // Print input line
         attron(COLOR_PAIR(CP_GREEN));
-        mvprintw(i, 0, "%s", (input_line_prefix + input_line).c_str());
+        printw("%s", (input_line_prefix + input_line).c_str());
         attroff(COLOR_PAIR(CP_GREEN));
         move(y, x); // Move cursor to correct position
 
@@ -230,6 +243,7 @@ int main() {
             // insert into input line
             input_line.insert(x - input_line_prefix.length(), 1, (char)ch);
             x++;
+                // fclose(lf);//todo remove
             break;
         }
     }
