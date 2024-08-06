@@ -1,5 +1,6 @@
 #include "words.h"
 #include <ncurses.h>
+#include <regex>
 #include <string>
 #include <vector>
 
@@ -21,6 +22,10 @@ std::string input_line_prefix = "$ :";
 /*********************************************************/
 /*             Structs                                   */
 /*********************************************************/
+
+// Proposition:
+// create a structure that only saves words, and their location.
+// clear screen with blanks, and then add words
 
 // Create a structure that represents an array of strings and empty strings
 // loop through structure and print objects
@@ -46,6 +51,7 @@ struct Grid {
 
         void insert(std::string && word) {
             if (cells.size() != 1) {
+                // TODO handle
                 std::printf("Cells size is not 1");
                 exit(1);
             }
@@ -55,6 +61,8 @@ struct Grid {
             cells[0] = std::move(left);
             cells.push_back(std::move(word));
             cells.push_back(std::move(right));
+            blank[1] = false;
+            blank[2] = true;
         }
     };
     std::vector<Line> lines;
@@ -76,7 +84,32 @@ Grid emptyScreen() {
     return ret;
 }
 
-void init_color_pairs() {
+void printGrid(const Grid& grid, const std::string& input_line) {
+    for (const auto& line : grid.lines) {
+        for( size_t i = 0; i < line.cells.size(); i++ ) {
+            auto cell = line.cells[i];
+            if (!line.blank[i]) {
+                // check match and color
+                std::regex re(input_line);
+                std::smatch m;
+                if (std::regex_search(cell, m, re)) {
+                    // TODO : position
+                    mvprintw(i, 0, "%s", m.prefix().str().c_str());
+                    attron(COLOR_PAIR(CP_BLUE));
+                    mvprintw(i, 0, "%s", m[0].str().c_str());
+                    attroff(COLOR_PAIR(CP_BLUE));
+                    mvprintw(i, 0, "%s", m.suffix().str().c_str());
+                }
+                else {
+                    // TODO normal print
+                }
+            }
+            line.cells[i];
+        }
+    }
+}
+
+    void init_color_pairs() {
     // Define color pairs
     init_pair(CP_RED, COLOR_RED, -1);
     init_pair(CP_BLUE, COLOR_BLUE, -1);
@@ -131,10 +164,13 @@ int main() {
         clear(); // Clear the screen
         size_t i;
 
-        for (i = 0; i < grid.lines.size(); ++i) {
-            mvprintw(i, 0, "%s", lines[i].c_str());
-        }
+        // Print Grid
+        printGrid( grid, input_line );
+        // for (i = 0; i < grid.lines.size(); ++i) {
+        //     mvprintw(i, 0, "%s", lines[i].c_str());
+        // }
 
+        // Print input line
         attron(COLOR_PAIR(CP_GREEN));
         mvprintw(i, 0, "%s", (input_line_prefix + input_line).c_str());
         attroff(COLOR_PAIR(CP_GREEN));
@@ -193,11 +229,6 @@ int main() {
         default:
             // insert into input line
             input_line.insert(x - input_line_prefix.length(), 1, (char)ch);
-            // TODO: check if match
-            for( auto & line : lines ) {
-                if( 
-            }
-            // TODO: color match
             x++;
             break;
         }
