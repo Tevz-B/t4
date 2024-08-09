@@ -101,7 +101,11 @@ void printGrid(const Grid& grid, const std::string& input_line) {
                 std::regex re(input_line);
                 std::smatch m;
                 if (std::regex_search(cell, m, re)) {
-                    // TODO : position try refacto0; i < line.cells.size; i++) {
+                    if (m.prefix().length() == 0 && m.suffix().length() == 0) {
+                        // complete match
+                        printw("%s", std::string(m[0].length(), blank_char).c_str());
+                        continue;
+                    }
                     printw("%s", m.prefix().str().c_str());
                     attron(COLOR_PAIR(CP_BLUE));
                     printw("%s", m[0].str().c_str());
@@ -118,15 +122,11 @@ void printGrid(const Grid& grid, const std::string& input_line) {
     }
 }
 
-    void init_color_pairs() {
+void init_color_pairs() {
     // Define color pairs
     init_pair(CP_RED, COLOR_RED, -1);
     init_pair(CP_BLUE, COLOR_BLUE, -1);
     init_pair(CP_GREEN, COLOR_GREEN, -1);
-}
-
-void print_colored() {
-    // TODO
 }
 
 /*********************************************************/
@@ -195,7 +195,7 @@ int main() {
         case KEY_BACKSPACE:
         case 127: // Handle backspace
             if (x > input_line_prefix.length()) {
-                input_line.erase(x - 1, 1);
+                input_line.erase(x - input_line_prefix.length() - 1, 1);
                 x--;
             }
             // } else if (y > 0) {
@@ -243,7 +243,6 @@ int main() {
             // insert into input line
             input_line.insert(x - input_line_prefix.length(), 1, (char)ch);
             x++;
-                // fclose(lf);//todo remove
             break;
         }
     }
