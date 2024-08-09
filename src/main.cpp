@@ -1,125 +1,102 @@
-#include "words.h"
+#include <fcntl.h>
 #include <ncurses.h>
 #include <regex>
-#include <string>
-#include <vector>
 #include <stdio.h>
-#include <unistd.h>
-#include <sys/types.h>
+#include <string>
 #include <sys/stat.h>
-#include <fcntl.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <vector>
 
 /*********************************************************/
 /*             Globals                                   */
 /*********************************************************/
 
-FILE *lf; // Log file
+FILE* lf; // Log file
 uint16_t screen_width = 20;
 uint16_t screen_height = 5;
 uint16_t input_line_index = screen_height;
 char blank_char = '-';
 std::string input_line_prefix = "$ :";
 
+using Location = std::pair<int, int>;
+using Words = std::vector<std::pair<Location, std::string>>;
+Words current_words;
+
 // Color pairs
 #define CP_RED 1
 #define CP_BLUE 2
 #define CP_GREEN 3
 
-#define LOG(...) fprintf(lf, __VA_ARGS__);fprintf(lf,"\n");fflush(lf)
+#define LOG(...)                                                               \
+    fprintf(lf, __VA_ARGS__);                                                  \
+    fprintf(lf, "\n");                                                         \
+    fflush(lf)
 
 /*********************************************************/
 /*             Structs                                   */
 /*********************************************************/
 
-// Proposition:
-// create a structure that only saves words, and their location.
-// clear screen with blanks, and then add words
-
-// Create a structure that represents an array of strings and empty strings
-// loop through structure and print objects
-// Grid:
-//
-// +==================+
-// |     |      |     |
-// |     | Cell |     | Line
-// |     |      |     |
-// +- - - - - - -  - -+
-// |     |      |     |
-// |     |      |     |
-// |     |      |     |
-// +==================+
-// |                  |
-// |      ...         |
-
-struct Grid {
-    // using Line = std::vector<std::string>;
-    struct Line {
-        std::vector<std::string> cells;
-        std::vector<bool> blank;
-
-        void insert(std::string && word) {
-            if (cells.size() != 1) {
-                // TODO handle
-                std::printf("Cells size is not 1");
-                exit(1);
-            }
-            auto ostr = std::move(cells[0]);
-            auto left = ostr.substr(0,5);
-            auto right = ostr.substr(word.length() + 5);
-            cells[0] = std::move(left);
-            cells.push_back(std::move(word));
-            cells.push_back(std::move(right));
-            blank[1] = false;
-            blank[2] = true;
-        }
-    };
-    std::vector<Line> lines;
-};
-
 /*********************************************************/
 /*             Utils                                     */
 /*********************************************************/
 
-Grid emptyScreen() {
-    Grid ret;
-    Grid::Line line{
-        .cells = {std::string(screen_width, blank_char)},
-        .blank = {true},
-    };
-    for (uint16_t i = 0; i < screen_height; i++) {
-        ret.lines.push_back(line);
-    }
-    return ret;
+std::string new_word() {
+    const std::string words[]{"hello", "something", "hi", "goat", "cpp"};
+    const int word_count = 5;
+    const int word_idx = rand() % word_count;
+    return words[word_idx];
+}
+std::pair<int, int> new_word_location(int word_length) {
+    int x = (rand() % screen_width) - word_length;
+    int y = rand() % screen_height;
+    return {x, y};
 }
 
-void printGrid(const Grid& grid, const std::string& input_line) {
-    for (const auto& line : grid.lines) {
-        for (size_t i = 0; i < line.cells.size(); i++) {
-            auto cell = line.cells[i];
-            if (!line.blank[i]) {
-                // check match and color print
-                std::regex re(input_line);
-                std::smatch m;
-                if (std::regex_search(cell, m, re)) {
-                    if (m.prefix().length() == 0 && m.suffix().length() == 0) {
-                        // complete match
-                        printw("%s", std::string(m[0].length(), blank_char).c_str());
-                        continue;
-                    }
-                    printw("%s", m.prefix().str().c_str());
-                    attron(COLOR_PAIR(CP_BLUE));
-                    printw("%s", m[0].str().c_str());
-                    attroff(COLOR_PAIR(CP_BLUE));
-                    printw("%s", m.suffix().str().c_str());
-                    LOG("tevz");
-                    continue;
-                }
-            }
-            // normal print
-            printw("%s", cell.c_str());
-        }
-        printw("\n");
+void print_empty() {
+    for (uint16_t i = 0; i < screen_height; i++) {
+        printw("%s\n", std::string(screen_width, blank_char).c_str());
     }
+}
+
+void print_words(std::string& input_line) {
+    for (const auto& [loc, w] : current_words) {
+        std::regex re(input_line);
+        std::smatch m;
+        if (std::regex_search(w, m, re)) {
+            if (m.prefix().length() == 0 && m.suffix().length() == 0) {
+                // TODO:
+                // auto w = new_word();
+                // auto loc = new_word_location((int)w.length());
+                // current_words.push_back(
+                //     std::pair<Location, std::string>(loc, w));
+                // int y = input_line_index;
+                // int x = input_line_prefix.length();
+                // move(x,y);
+                // input_line.clear();
+                // continue;
+            }
+
+            int x, y;
+            getyx(stdscr, y, x);
+            move(loc.first, loc.second);
+            printw("%s", m.prefix().str().c_str());
+            attron(COLOR_PAIR(CP_RED));
+            printw("%s", m[0].str().c_str());
+            attroff(COLOR_PAIR(CP_RED));
+            printw("%s", m.suffix().str().c_str());
+            move(x, y);
+            // LOG("tevz");
+            continue;
+        }
+        mvprintw(loc.first, loc.second, "%s", w.c_str());
+    }
+}
+
+void generate_words() {
+    auto w = new_word();
+    auto loc = new_word_location((int)w.length());
+    current_words = {std::pair<Location, std::string>(loc, w)};
 }
 
 void init_color_pairs() {
@@ -133,7 +110,6 @@ void init_color_pairs() {
 /*             Main                                      */
 /*********************************************************/
 
-
 int init() {
     // Init debug log
     lf = fopen("t4.log", "w+");
@@ -146,6 +122,8 @@ int init() {
         return 1;
     }
 
+    std::srand(42);
+
     start_color();        // Start color functionality
     use_default_colors(); // Use default terminal colors
     init_color_pairs();
@@ -153,6 +131,9 @@ int init() {
     cbreak();             // Line buffering disabled
     keypad(stdscr, TRUE); // We get F1, F2, etc...
     noecho();             // Don't echo() while we do getch
+
+    generate_words();
+
     return 0;
 }
 
@@ -164,25 +145,16 @@ int main() {
     LOG("begin");
 
     std::string input_line;
-    // Create a buffer to store lines of text
-    Grid grid = emptyScreen();
-
-    // TODO
-    // Insert word onto screen
-    // grid.lines[0].cells[0].replace(5, word().length(), word());
-    grid.lines[0].insert(word());
-
     int y = input_line_index;
     int x = input_line_prefix.length();
-
     while (true) {
         clear(); // Clear the screen
-        // Print Grid
-        printGrid( grid, input_line );
-        // for (i = 0; i < grid.lines.size(); ++i) {
-        //     mvprintw(i, 0, "%s", lines[i].c_str());
-        // }
+        // INFO: print empty screen
+        print_empty();
+        // INFO: print words on top
+        print_words(input_line);
 
+        move(y, 0); // Move cursor to correct position
         // Print input line
         attron(COLOR_PAIR(CP_GREEN));
         printw("%s", (input_line_prefix + input_line).c_str());
