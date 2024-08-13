@@ -1,2 +1,2 @@
 bin/*
-!bin/t4
+# !bin/t4

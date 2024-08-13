@@ -59,22 +59,20 @@ void print_empty() {
     }
 }
 
-void print_words(std::string& input_line) {
+void print_words(std::string& input_line, int& y, int& x) {
+    std::vector<std::string> rm_words;
     for (const auto& [loc, w] : current_words) {
         std::regex re(input_line);
         std::smatch m;
         if (std::regex_search(w, m, re)) {
             if (m.prefix().length() == 0 && m.suffix().length() == 0) {
-                // TODO:
-                // auto w = new_word();
-                // auto loc = new_word_location((int)w.length());
-                // current_words.push_back(
-                //     std::pair<Location, std::string>(loc, w));
-                // int y = input_line_index;
-                // int x = input_line_prefix.length();
-                // move(x,y);
-                // input_line.clear();
-                // continue;
+                y = input_line_index;
+                x = input_line_prefix.length();
+                // LOG("match: move y:%i x:%i", y, x);
+                input_line.clear();
+                rm_words.push_back( w );
+
+                continue;
             }
 
             int x, y;
@@ -90,6 +88,16 @@ void print_words(std::string& input_line) {
             continue;
         }
         mvprintw(loc.first, loc.second, "%s", w.c_str());
+    }
+
+    // TODO: this only works for one word in a vec
+    for (const auto& w : rm_words) {
+        current_words.pop_back(); // remove typed word
+
+        auto nw = new_word();
+        auto nloc = new_word_location((int)nw.length());
+        current_words.push_back( // Add new word
+            std::pair<Location, std::string>(nloc, nw));
     }
 }
 
@@ -152,7 +160,7 @@ int main() {
         // INFO: print empty screen
         print_empty();
         // INFO: print words on top
-        print_words(input_line);
+        print_words(input_line, y, x);
 
         move(y, 0); // Move cursor to correct position
         // Print input line
@@ -160,6 +168,7 @@ int main() {
         printw("%s", (input_line_prefix + input_line).c_str());
         attroff(COLOR_PAIR(CP_GREEN));
         move(y, x); // Move cursor to correct position
+        LOG("begin: move y:%i x:%i", y, x);
 
         int ch = getch(); // Get user input
 
