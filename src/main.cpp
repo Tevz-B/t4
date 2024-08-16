@@ -47,10 +47,12 @@ std::string new_word() {
     const int word_idx = rand() % word_count;
     return words[word_idx];
 }
+
 std::pair<int, int> new_word_location(int word_length) {
-    int x = (rand() % screen_width) - word_length;
-    int y = rand() % screen_height;
-    return {x, y};
+    int x = rand() % (screen_width - word_length);
+    int y = rand() % (screen_height - 1); // exclude last line (input)
+    LOG("new loc: y:%i, x:%i", y, x);
+    return {y, x};
 }
 
 void print_empty() {
@@ -107,13 +109,6 @@ void generate_words() {
     current_words = {std::pair<Location, std::string>(loc, w)};
 }
 
-void init_color_pairs() {
-    // Define color pairs
-    init_pair(CP_RED, COLOR_RED, -1);
-    init_pair(CP_BLUE, COLOR_BLUE, -1);
-    init_pair(CP_GREEN, COLOR_GREEN, -1);
-}
-
 /*********************************************************/
 /*             Main                                      */
 /*********************************************************/
@@ -134,7 +129,9 @@ int init() {
 
     start_color();        // Start color functionality
     use_default_colors(); // Use default terminal colors
-    init_color_pairs();
+    init_pair(CP_RED, COLOR_RED, -1); // -1 = transparent background
+    init_pair(CP_BLUE, COLOR_BLUE, -1);
+    init_pair(CP_GREEN, COLOR_GREEN, -1);
     // Initialize screen
     cbreak();             // Line buffering disabled
     keypad(stdscr, TRUE); // We get F1, F2, etc...
@@ -162,7 +159,7 @@ int main() {
         // INFO: print words on top
         print_words(input_line, y, x);
 
-        move(y, 0); // Move cursor to correct position
+        move(y, 0); // Move cursor
         // Print input line
         attron(COLOR_PAIR(CP_GREEN));
         printw("%s", (input_line_prefix + input_line).c_str());
@@ -179,47 +176,8 @@ int main() {
                 input_line.erase(x - input_line_prefix.length() - 1, 1);
                 x--;
             }
-            // } else if (y > 0) {
-            //     x = lines[y - 1].length();
-            //     lines[y - 1] += lines[y];
-            //     lines.erase(lines.begin() + y);
-            //     y--;
-            // }
             break;
-        // case '\n': // Handle new line
-        //     lines.insert(lines.begin() + y + 1, lines[y].substr(x));
-        //     lines[y] = lines[y].substr(0, x);
-        //     y++;
-        //     x = 0;
-        //     break;
-        // case KEY_LEFT:
-        //     if (x > 0) {
-        //         x--;
-        //     } else if (y > 0) {
-        //         y--;
-        //         x = lines[y].size();
-        //     }
-        //     break;
-        // case KEY_RIGHT:
-        //     if (x < lines[y].size()) {
-        //         x++;
-        //     } else if (y < lines.size() - 1) {
-        //         y++;
-        //         x = 0;
-        //     }
-        //     break;
-        // case KEY_UP:
-        //     if (y > 0) {
-        //         y--;
-        //         x = std::min(x, (int)lines[y].size());
-        //     }
-        //     break;
-        // case KEY_DOWN:
-        //     if (y < lines.size() - 1) {
-        //         y++;
-        //         x = std::min(x, (int)lines[y + 1].size());
-        //     }
-        //     break;
+        case ' ': break;
         default:
             // insert into input line
             input_line.insert(x - input_line_prefix.length(), 1, (char)ch);
