@@ -13,11 +13,11 @@
 /*********************************************************/
 
 FILE* lf; // Log file
-uint16_t screen_width = 20;
-uint16_t screen_height = 5;
-uint16_t input_line_index = screen_height;
-char blank_char = '-';
-std::string input_line_prefix = "$ :";
+static const uint16_t screen_width = 40;
+static const uint16_t screen_height = 20;
+static const uint16_t input_line_index = screen_height;
+static const char blank_char = '-';
+static const std::string input_line_prefix = "$ :";
 
 using Location = std::pair<int, int>;
 using Words = std::vector<std::pair<Location, std::string>>;
@@ -41,11 +41,20 @@ Words current_words;
 /*             Utils                                     */
 /*********************************************************/
 
-std::string new_word() {
-    const std::string words[]{"hello", "something", "hi", "goat", "cpp"};
+std::string new_word_old() {
+    const std::string words[]{"hello", "something", "hi", "goat", "cpp" };
     const int word_count = 5;
     const int word_idx = rand() % word_count;
     return words[word_idx];
+}
+
+std::string new_word() {
+    const int word_count = 2;
+    const std::string words[word_count]{"j", "k", /* "up", "down" */ };
+    const int word_idx = rand() % word_count;
+    auto rnd_wrd_suff = words[word_idx];
+    auto rnd_wrd_pre = std::to_string(rand() % 1000);
+    return rnd_wrd_pre + rnd_wrd_suff;
 }
 
 std::pair<int, int> new_word_location(int word_length) {
@@ -67,16 +76,16 @@ void print_words(std::string& input_line, int& y, int& x) {
         std::regex re(input_line);
         std::smatch m;
         if (std::regex_search(w, m, re)) {
+            // full match
             if (m.prefix().length() == 0 && m.suffix().length() == 0) {
                 y = input_line_index;
                 x = input_line_prefix.length();
-                // LOG("match: move y:%i x:%i", y, x);
                 input_line.clear();
                 rm_words.push_back( w );
-
                 continue;
             }
 
+            // partial match
             int x, y;
             getyx(stdscr, y, x);
             move(loc.first, loc.second);
@@ -86,7 +95,6 @@ void print_words(std::string& input_line, int& y, int& x) {
             attroff(COLOR_PAIR(CP_RED));
             printw("%s", m.suffix().str().c_str());
             move(x, y);
-            // LOG("tevz");
             continue;
         }
         mvprintw(loc.first, loc.second, "%s", w.c_str());
@@ -100,6 +108,8 @@ void print_words(std::string& input_line, int& y, int& x) {
         auto nloc = new_word_location((int)nw.length());
         current_words.push_back( // Add new word
             std::pair<Location, std::string>(nloc, nw));
+        // Print new word
+        mvprintw(nloc.first, nloc.second, "%s", nw.c_str());
     }
 }
 
