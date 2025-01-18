@@ -42,7 +42,7 @@ Words current_words;
 /*********************************************************/
 
 std::string new_word_old() {
-    const std::string words[]{"hello", "something", "hi", "goat", "cpp" };
+    const std::string words[]{"hello", "something", "hi", "goat", "cpp"};
     const int word_count = 5;
     const int word_idx = rand() % word_count;
     return words[word_idx];
@@ -50,7 +50,7 @@ std::string new_word_old() {
 
 std::string new_word() {
     const int word_count = 2;
-    const std::string words[word_count]{"j", "k", /* "up", "down" */ };
+    const std::string words[word_count]{"j", "k", /* "up", "down" */};
     const int word_idx = rand() % word_count;
     auto rnd_wrd_suff = words[word_idx];
     auto rnd_wrd_pre = std::to_string(rand() % 1000);
@@ -81,7 +81,7 @@ void print_words(std::string& input_line, int& y, int& x) {
                 y = input_line_index;
                 x = input_line_prefix.length();
                 input_line.clear();
-                rm_words.push_back( w );
+                rm_words.push_back(w);
                 continue;
             }
 
@@ -106,8 +106,7 @@ void print_words(std::string& input_line, int& y, int& x) {
 
         auto nw = new_word();
         auto nloc = new_word_location((int)nw.length());
-        current_words.push_back( // Add new word
-            std::pair<Location, std::string>(nloc, nw));
+        current_words.push_back({nloc, nw});
         // Print new word
         mvprintw(nloc.first, nloc.second, "%s", nw.c_str());
     }
@@ -137,8 +136,8 @@ int init() {
 
     std::srand(42);
 
-    start_color();        // Start color functionality
-    use_default_colors(); // Use default terminal colors
+    start_color();                    // Start color functionality
+    use_default_colors();             // Use default terminal colors
     init_pair(CP_RED, COLOR_RED, -1); // -1 = transparent background
     init_pair(CP_BLUE, COLOR_BLUE, -1);
     init_pair(CP_GREEN, COLOR_GREEN, -1);
@@ -177,22 +176,26 @@ int main() {
         move(y, x); // Move cursor to correct position
         LOG("begin: move y:%i x:%i", y, x);
 
+        // Handle Input
         int ch = getch(); // Get user input
-
         switch (ch) {
-        case KEY_BACKSPACE:
-        case 127: // Handle backspace
-            if (x > input_line_prefix.length()) {
-                input_line.erase(x - input_line_prefix.length() - 1, 1);
-                x--;
-            }
-            break;
-        case ' ': break;
-        default:
-            // insert into input line
-            input_line.insert(x - input_line_prefix.length(), 1, (char)ch);
-            x++;
-            break;
+            case KEY_BACKSPACE:
+            case 127: // Handle backspace
+                if (x > input_line_prefix.length()) {
+                    input_line.erase(x - input_line_prefix.length() - 1, 1);
+                    x--;
+                }
+                break;
+            case '\n':
+            case '\t':
+            case '\r':
+            case ' ':
+                break;
+            default:
+                // insert into input line
+                input_line.insert(x - input_line_prefix.length(), 1, (char)ch);
+                x++;
+                break;
         }
     }
 
