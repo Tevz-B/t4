@@ -15,6 +15,7 @@ add_executable(
     t4
     src/main.cpp
     src/words.cpp
+    src/log.cpp
 )
 
 

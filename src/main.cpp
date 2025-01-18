@@ -1,18 +1,24 @@
 #include <fcntl.h>
 #include <ncurses.h>
 #include <regex>
-#include <stdio.h>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <vector>
 
+#include "log.h"
+#include "words.h"
+
+// TODO: read from input
+// - window size
+// - random seed
+// -
+
 /*********************************************************/
 /*             Globals                                   */
 /*********************************************************/
 
-FILE* lf; // Log file
 static const uint16_t screen_width = 40;
 static const uint16_t screen_height = 20;
 static const uint16_t input_line_index = screen_height;
@@ -27,11 +33,6 @@ Words current_words;
 #define CP_RED 1
 #define CP_BLUE 2
 #define CP_GREEN 3
-
-#define LOG(...)                                                               \
-    fprintf(lf, __VA_ARGS__);                                                  \
-    fprintf(lf, "\n");                                                         \
-    fflush(lf)
 
 /*********************************************************/
 /*             Structs                                   */
@@ -48,7 +49,7 @@ std::string new_word_old() {
     return words[word_idx];
 }
 
-std::string new_word() {
+std::string new_generated_word() {
     const int word_count = 2;
     const std::string words[word_count]{"j", "k", /* "up", "down" */};
     const int word_idx = rand() % word_count;
@@ -64,8 +65,17 @@ std::pair<int, int> new_word_location(int word_length) {
     return {y, x};
 }
 
+auto& add_new_word() {
+    // auto w = new_generated_word();
+    auto w = word_from_file();
+    auto loc = new_word_location((int)w.length());
+    current_words.push_back({loc, w});
+    return current_words.back();
+}
+
 void print_empty() {
-    for (uint16_t i = 0; i < screen_height; i++) {
+    printw("Press Control-D to exit :^D\n");           // First line
+    for (uint16_t i = 0; i < screen_height - 1; i++) { // The rest
         printw("%s\n", std::string(screen_width, blank_char).c_str());
     }
 }
@@ -100,22 +110,18 @@ void print_words(std::string& input_line, int& y, int& x) {
         mvprintw(loc.first, loc.second, "%s", w.c_str());
     }
 
-    // TODO: this only works for one word in a vec
     for (const auto& w : rm_words) {
-        current_words.pop_back(); // remove typed word
+        // remove typed word
+        current_words.erase(
+            std::remove_if(current_words.begin(), current_words.end(),
+                           [&w](const auto& i) { return i.second == w; }),
+            current_words.end());
+        // current_words.pop_back();
 
-        auto nw = new_word();
-        auto nloc = new_word_location((int)nw.length());
-        current_words.push_back({nloc, nw});
+        auto& [loc, word] = add_new_word();
         // Print new word
-        mvprintw(nloc.first, nloc.second, "%s", nw.c_str());
+        mvprintw(loc.first, loc.second, "%s", word.c_str());
     }
-}
-
-void generate_words() {
-    auto w = new_word();
-    auto loc = new_word_location((int)w.length());
-    current_words = {std::pair<Location, std::string>(loc, w)};
 }
 
 /*********************************************************/
@@ -124,7 +130,12 @@ void generate_words() {
 
 int init() {
     // Init debug log
-    lf = fopen("t4.log", "w+");
+    init_log();
+
+    if( !read_words_file("words.txt") ) {
+        printf("Failed to read words file\n");
+        return 1;
+    }
 
     // init terminal
     initscr();
@@ -133,6 +144,7 @@ int init() {
         printf("Your terminal does not support color\n");
         return 1;
     }
+
 
     std::srand(42);
 
@@ -146,7 +158,9 @@ int init() {
     keypad(stdscr, TRUE); // We get F1, F2, etc...
     noecho();             // Don't echo() while we do getch
 
-    generate_words();
+    add_new_word();
+    add_new_word();
+    add_new_word();
 
     return 0;
 }
@@ -159,8 +173,8 @@ int main() {
     LOG("begin");
 
     std::string input_line;
-    int y = input_line_index;
-    int x = input_line_prefix.length();
+    int y = (int)input_line_index;
+    int x = (int)input_line_prefix.length();
     while (true) {
         clear(); // Clear the screen
         // INFO: print empty screen
@@ -174,23 +188,30 @@ int main() {
         printw("%s", (input_line_prefix + input_line).c_str());
         attroff(COLOR_PAIR(CP_GREEN));
         move(y, x); // Move cursor to correct position
-        LOG("begin: move y:%i x:%i", y, x);
+        LOG("move y:%d x:%d", y, x);
 
         // Handle Input
         int ch = getch(); // Get user input
         switch (ch) {
+                // backspace
             case KEY_BACKSPACE:
-            case 127: // Handle backspace
-                if (x > input_line_prefix.length()) {
+            case 127:
+                if (x > (int)input_line_prefix.length()) {
                     input_line.erase(x - input_line_prefix.length() - 1, 1);
                     x--;
                 }
                 break;
+            // whitespace - ignore
             case '\n':
             case '\t':
             case '\r':
             case ' ':
                 break;
+            // quit (Control-D)
+            case 4:
+                goto exitLoop;
+                break;
+            // other chars
             default:
                 // insert into input line
                 input_line.insert(x - input_line_prefix.length(), 1, (char)ch);
@@ -198,6 +219,7 @@ int main() {
                 break;
         }
     }
+exitLoop:
 
     // Clean up
     endwin();
