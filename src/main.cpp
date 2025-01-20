@@ -13,15 +13,16 @@
 // TODO: read from input
 // - window size
 // - random seed
-// -
+// - set words.txt file
 
 /*********************************************************/
 /*             Globals                                   */
 /*********************************************************/
 
-static const uint16_t screen_width = 40;
-static const uint16_t screen_height = 20;
-static const uint16_t input_line_index = screen_height;
+static int screen_width;
+static int screen_height;
+static int input_line_index;
+
 static const char blank_char = '-';
 static const std::string input_line_prefix = "$ :";
 
@@ -42,6 +43,12 @@ Words current_words;
 /*             Utils                                     */
 /*********************************************************/
 
+void set_screen_dimensions(int width, int height) {
+    screen_width = width;
+    screen_height = height;
+    input_line_index = screen_height;
+}
+
 std::string new_word_old() {
     const std::string words[]{"hello", "something", "hi", "goat", "cpp"};
     const int word_count = 5;
@@ -60,7 +67,8 @@ std::string new_generated_word() {
 
 std::pair<int, int> new_word_location(int word_length) {
     int x = rand() % (screen_width - word_length);
-    int y = rand() % (screen_height - 1); // exclude last line (input)
+    int y = rand() % (screen_height - 2); // exclude last line (input), and first line (manual)
+    ++y; // exclude first line
     LOG("new loc: y:%i, x:%i", y, x);
     return {y, x};
 }
@@ -132,7 +140,7 @@ int init() {
     // Init debug log
     init_log();
 
-    if( !read_words_file("words.txt") ) {
+    if (!read_words_file("words.txt")) {
         printf("Failed to read words file\n");
         return 1;
     }
@@ -144,9 +152,6 @@ int init() {
         printf("Your terminal does not support color\n");
         return 1;
     }
-
-
-    std::srand(42);
 
     start_color();                    // Start color functionality
     use_default_colors();             // Use default terminal colors
@@ -165,7 +170,59 @@ int init() {
     return 0;
 }
 
-int main() {
+void print_usage(FILE* stream, const char* program) {
+    // clang-format off
+    fprintf(stream,
+            "t4 - Tevz's Terminal Typing Test\n"
+            "\n"
+            "usage: %s [-h | [-s size] [-f words_file] [-r random_seed]]\n"
+            "\n"
+            "options:\n"
+            "    -h         show this message and exit\n"
+            "    -s         size of window in characters (not pixels): {lines}x{columns}\n"
+            "    -f         path to words file (default:words.txt)\n"
+            "    -r         random seed (int)\n",
+            program);
+    // clang-format on
+}
+
+int main(int argc, char** argv) {
+    std::string size_str;
+    std::string filename = "words.txt";
+    int rnd_seed = 42;
+    int width = 40;
+    int height = 20;
+
+    for (int opt; (opt = getopt(argc, argv, "hs:f:r:")) != -1;) {
+        switch (opt) {
+            case 'h':
+                return print_usage(stdout, argv[0]), 0;
+            case 's': {
+                size_str = optarg;
+                auto split_pos = size_str.find('x');
+                width = atoi(size_str.substr(0, split_pos).c_str());
+                height = atoi(size_str.substr(split_pos + 1).c_str());
+            }
+                continue;
+            case 'f':
+                filename = optarg;
+                continue;
+            case 'r':
+                rnd_seed = atoi(optarg);
+                continue;
+        }
+    }
+    if (filename.empty()) {
+        printf("Words filename is empty");
+        return 1;
+    }
+    if (width <= 9 || height <= 4) {
+        printf("Window dimensions must be at least 10 x 5");
+        return 1;
+    }
+    std::srand(rnd_seed);
+    set_screen_dimensions(width, height);
+
     if (init()) {
         printf("Failed to init\n");
         return 1;
@@ -210,6 +267,8 @@ int main() {
             // quit (Control-D)
             case 4:
                 goto exitLoop;
+            case 23:
+                input_line.clear();
                 break;
             // other chars
             default:
